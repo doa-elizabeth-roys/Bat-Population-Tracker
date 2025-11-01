@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Bat Images</title>
+    <style>
+        h1 {
+            text-align: center;
+            font-size: 36px;
+            margin-top: 20px;
+        }
+
+        form {
+            text-align: center;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div style="
+        background-color: #f8f8f8;   /* soft beige tone #F0F0F0;  */
+        color: #333;
+        text-align: center;
+        padding: 40px 20px;
+    ">
+
+        <h1>Upload Images for Bat Detection and Counting</h1>
+        <!-- <img src="{{image_url}}" height="200px" width="300px" alt="Image of SFF"> -->
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" multiple />
+            <input type="submit" value="Upload and Detect">
+
+    <style>
+
+    </style>
+    <img 
+    src="{{ url_for('static', filename='images/flyingbat.png') }}" 
+    alt="Image of SFF" 
+    style="
+        display: block;
+        padding: 10px;
+        margin: 0px auto;           /* centers the image */
+        width: 100%;                  /* 90% of the screen width */
+        height: 100vh;                /* 80% of the viewport height */
+        object-fit: cover;           /* scales the image nicely */
+        border-radius: 15px;         /* optional rounded corners */
+    ">
+
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+train: /content/drive/MyDrive/ComputerVisionBat/BatDetection.yolov8/train/images
+val: /content/drive/MyDrive/ComputerVisionBat/BatDetection.yolov8/valid/images
+test: /content/drive/MyDrive/ComputerVisionBat/BatDetection.yolov8/test/images
+
+
+nc: 1
+names: ['bat']
+
+roboflow:
+  workspace: bat-svxlc
+  project: bat-detection-rncf9
+  version: 4
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/bat-svxlc/bat-detection-rncf9/dataset/4
