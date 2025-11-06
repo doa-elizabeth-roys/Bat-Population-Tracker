@@ -2,6 +2,8 @@
 <html>
 <head>
     <title>Upload Bat Images</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
     <style>
         h1 {
             text-align: center;
@@ -22,6 +24,116 @@
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <input type="file" name="file" multiple />
             <input type="submit" value="Upload and Detect">
+        </form>
+
+        {% if message %}
+            <h3 style="text-align:center; color:black; font-weight: bold;">{{ message }}</h3>
+        {% endif %}
+
+        {% if results %}
+        <div class="results-section">
+          <h3>Processed Images:</h3>
+          <!-- <div class="image-gallery"> -->
+            {% for r in results %}
+              <div class="image-item">
+                <img src="{{ r.processed_image }}" alt="{{ r.filename }}">
+                <!-- <p>{{ r.filename }} → {{ r.bat_count }} bats</p> -->
+              </div>
+            {% endfor %}
+          <!-- </div> -->
+        </div>
+        {% endif %}
+        
+        <div style="text-align:center; margin-top:20px;">
+            <!-- <button id="showPlotBtn">Show Thingspeak Plot</button> -->
+            <button onclick="myFunction()">Show Thingspeak Plot</button>
+        </div>
+        
+        <div id="thingspeakPlot" style="display: none;text-align:center; margin-top:20px;">
+            <!-- <iframe width="450" height="260" style="border: 1px solid #cccccc;" src="https://thingspeak.com/channels/3142218/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15"></iframe> -->
+            <div class="container">
+                <canvas id="batChart">
+        
+                </canvas>
+        </div>  
+
+        <script>
+            function myFunction() {
+              var x = document.getElementById("thingspeakPlot");
+              if (x.style.display === "none") {
+                x.style.display = "block";
+              } else {
+                x.style.display = "none";
+              }
+            }
+
+            $(document).ready(function() {
+            function getData() {
+                var url ="https://api.thingspeak.com/channels/3142218/fields/1,2.json?api_key=6BHMOKSNA41YBCDY&results=30";
+                 
+
+                $.getJSON(url, function(data) {
+                    var countsByDay = {};
+
+                    // Collect bat counts per day
+                    $.each(data.feeds, function(index, feed) {
+                        if (feed.field1) {
+                            var date = new Date(feed.created_at);
+                            var dayKey = date.getFullYear() + "-" 
+                                        + ("0" + (date.getMonth() + 1)).slice(-2) + "-" 
+                                        + ("0" + date.getDate()).slice(-2);
+                            if (!countsByDay[dayKey]) countsByDay[dayKey] = 0;
+                            countsByDay[dayKey] += parseInt(feed.field1);
+                        }
+                    });
+
+                    // Generate full timeline from first upload to today
+                    var allDates = [];
+                    var startDate = new Date(Object.keys(countsByDay)[0]); // first upload
+                    var endDate = new Date(); // today
+                    for (var d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                        var key = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+                        allDates.push(key);
+                        if (!countsByDay[key]) countsByDay[key] = 0; // fill missing days with 0
+                    }
+
+                    // Prepare chart data
+                    var labels = allDates;
+                    var values = allDates.map(function(day) { return countsByDay[day]; });
+
+                    // Create line chart
+                    var ctx = document.getElementById('batChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Bat Count',
+                                data: values,
+                                borderColor: '#006400',
+                                backgroundColor: '#84bd00',
+                                fill: false,
+                                lineTension: 0
+                            }]
+                        },
+                        options: {
+                            scales: {
+                                yAxes: [{
+                                    ticks: { beginAtZero: true }
+                                }],
+                                xAxes: [{
+                                    ticks: { autoSkip: false }
+                                }]
+                            }
+                        }
+                    });
+                });
+            }
+
+            getData();
+        });
+        </script>
+        
     </div>
     <style>
     #page_look{
@@ -30,13 +142,65 @@
         padding: 25px;
         background-size: cover;
         background-repeat: no-repeat;
-        background-size: auto;
         margin: 20px auto;           /* centers the image */
         width: 95%;                  /* 90% of the screen width */
         height: 95vh;                /* 80% of the viewport height */
         object-fit: cover;           /* scales the image nicely */
         border-radius: 10px;         /* optional rounded corners */
 
+        background-attachment: fixed;
+        background-position: center;
+
+
+    }
+
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .image-item {
+        flex: 1 1 200px; /* flexible width */
+        max-width: 300px; /* prevent huge images */
+        text-align: center;
+    }
+
+    .image-item img {
+        width: 100%;
+        height: auto; /* keeps aspect ratio */
+        border-radius: 8px;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
+    }
+
+    .results-section {
+        background-color: rgba(255, 255, 255, 0.9);
+        margin: 30px auto;
+        padding: 20px;
+        width: 40%;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .image-item {
+        flex: 1 1 200px;
+        max-width: 300px;
+        text-align: center;
+    }
+
+    .image-item img {
+        width: 30%;
+        height: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 5px rgba(0,0,0,0.3);
     }
 
     </style>
@@ -57,3 +221,35 @@
     "> -->
 </body>
 </html>
+
+<!-- $.getJSON(url, function(data) {
+    // var countsByMonth = {};
+    var countsByDay = {};
+    $.each(data.feeds, function(index, feed) {
+        if (feed.field1) {
+            var date = new Date(feed.created_at);
+            // YYYY-MM-DD format
+            var dayKey = date.getFullYear() + "-" 
+                    + ("0" + (date.getMonth() + 1)).slice(-2) + "-" 
+                    + ("0" + date.getDate()).slice(-2);
+
+            if (!countsByDay[dayKey]) countsByDay[dayKey] = 0;
+            countsByDay[dayKey] += parseInt(feed.field1);
+        }
+    });
+
+    // $.each(data.feeds, function(index, feed) {
+    //     if (feed.field1) {
+    //         var date = new Date(feed.created_at);
+    //         var monthYear = date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2); // YYYY-MM
+
+    //         if (!countsByMonth[monthYear]) countsByMonth[monthYear] = 0;
+    //         countsByMonth[monthYear] += parseInt(feed.field1); // aggregate counts
+    //     }
+    // });
+
+    // Prepare data for chart
+    var labels = Object.keys(countsByDay).sort(); // sorted months
+    var values = labels.map(function(label) {
+        return countsByDay[label];
+    }); -->

@@ -1,13 +1,12 @@
 import sys
 import os
-import extract_metadata
-# sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from extract import extract_metadata
+import requests
 
 sys.path.append("C:/Users/DALE MARY MATHEW/Downloads/ComputerVisionUpload")
 
 from ultralytics.nn.modules.APConv import PConv
 from ultralytics import YOLO
-
 
 from flask import *
 app = Flask(__name__)
@@ -17,7 +16,7 @@ THINGSPEAK_URL = "https://api.thingspeak.com/update"
  
 # Define directories
 UPLOAD_FOLDER = "uploads"
-RESULTS_FOLDER = "results"
+RESULTS_FOLDER = "static/results"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
@@ -49,44 +48,143 @@ def home():
 
 @app.route("/upload", methods=["POST"])
 def upload_files():
-    files = request.files.getlist("file")  # multiple files
-    results_list = []
-
+    files = request.files.getlist("file")
     if not files:
         return jsonify({"error": "No files uploaded!"}), 400
+
+    results_list = []
+    total_bats = 0
 
     for file in files:
         img_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(img_path)
 
-        # Run inference on each image
-        results = model.predict(img_path, conf=0.25)
-        detections = results[0].tojson()
+        results = model.predict(img_path, conf=0.25, save=False,
+                                project=RESULTS_FOLDER, name="processed")
+        processed_img = results[0].plot()
+        
+        import cv2
+        processed_filename = f"processed_{file.filename}"
+        processed_image_path = os.path.join(RESULTS_FOLDER, processed_filename)
+        cv2.imwrite(processed_image_path, processed_img)
 
-        # Count detections
+        # detections = results[0].to_json()
+        
         bat_count = len(results[0].boxes)
+        total_bats += bat_count
+        location, date_str, month = extract_metadata(file.filename)
 
-        # Extract metadata from filename
-        location, date = extract_metadata(file.filename)
+        # 5Convert date string to ThingSpeak timestamp
+        from datetime import datetime
+        try:
+            # assuming date is like "2024-06-18_23-45"
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d_%H-%M")
+        except ValueError:
+            # fallback if format varies
+            date_obj = datetime.utcnow()
 
-        # Send to ThingSpeak
-        send_to_thingspeak(bat_count, location, date)
+        send_to_thingspeak(bat_count, location, date_obj)
 
-        # Store or send detections
+        # Build URL to show on web page
+        processed_image_url = url_for("static", filename=f"results/{processed_filename}")
+
+        results_list.append({
+            "filename": file.filename,
+            "bat_count": bat_count,
+            "location": location,
+            "date": date_str,
+            "processed_image": processed_image_url
+        })
+
+        # send_to_thingspeak(bat_count, location, date)
+
         # results_list.append({
         #     "filename": file.filename,
-        #     "detections": detections
+        #     "bat_count": bat_count,
+        #     "location": location,
+        #     "date": date,
+        #     "processed_image": processed_image_data
         # })
 
-        # (Optional) publish_to_cloud(detections)
+        # Flask expects a URL relative to the static folder or server root
+        # processed_image_url = url_for('static', filename=f"results/processed/{file.filename}")
 
-    # return jsonify(results_list)
-    return jsonify({
-    "message": "Detection completed and data sent to ThingSpeak!",
-    "filename": file.filename,
-    "bat_count": bat_count
-    })
+        # results_list.append({
+        #     "filename": file.filename,
+        #     "bat_count": bat_count,
+        #     "location": location,
+        #     "date": date,
+        #     "month": month
+        # })
 
+    # return jsonify({
+    #     "message": "Detection completed and data sent to ThingSpeak!",
+    #     "results": results_list
+    # })
+        # print(f"Image {file.filename}: {total_bats} bats detected at {location} on {date_str}")
+        if len(files) == 1:
+            message = f"Detected {total_bats} bats at {location}"
+        else:
+            message = f"Detected total {total_bats} bats across {len(files)} images"
+
+
+    # Return HTML with message instead of JSON
+    return render_template(
+        "index.html",
+        message = message,
+        # message=f"{total_bats} bats detected at {location} on {date_str} and sent to ThingSpeak!",
+        # processed_image=processed_image_url
+        results = results_list
+
+    )
+
+def send_to_thingspeak(count, location="Unknown", date_obj=None):
+    if date_obj is None:
+        from datetime import datetime
+        date_obj = datetime.utcnow()
+
+    payload = {
+        "api_key": THINGSPEAK_API_KEY,
+        "field1": count,       # Bat count
+        "field2": location,    # Location
+        "created_at": date_obj.strftime("%Y-%m-%dT%H:%M:%SZ")  # ISO UTC format  # Custom timestamp from filename
+    }
+
+    try:
+        response = requests.post("https://api.thingspeak.com/update.json", json=payload)
+        print("ThingSpeak Response:", response.text)
+    except Exception as e:
+        print("ThingSpeak upload failed:", e)
+
+    # print(f"Sending to ThingSpeak: {payload}")  # Debug
+
+    # try:
+    #     response = requests.post(THINGSPEAK_URL, params=payload)
+    #     print(f"ThingSpeak Response: {response.text}")
+    # except Exception as e:
+        # print(f"ThingSpeak upload failed: {e}")
+
+  
+# def send_to_thingspeak(count, location="Unknown", date="Unknown"):
+#     payload = {
+#         "api_key": THINGSPEAK_API_KEY,
+#         "field1": count,        # Bat count
+#         "field2": location,     # Location name
+#         "field3": date,         # Date
+#     }
+#     print(f"Sending to ThingSpeak: {payload}")  # debug line
+#     try:
+#         response = requests.post(THINGSPEAK_URL, params=payload)
+#         # if response.status_code == 200:
+#         print(f"ThingSpeak Response:", response.text)
+#         # else:
+#         #     print(f"ThingSpeak failed with status: {response.status_code}")
+#     except Exception as e:
+#         print(f"ThingSpeak upload failed: {e}")
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
 
 
 # @app.post("/upload/")
@@ -98,20 +196,18 @@ def upload_files():
 #     publish_result_http(results)
 #     return {"status": "ok", "bats": results["bat_count"]}
 
-def send_to_thingspeak(count, location="Unknown", date="Unknown"):
-    payload = {
-        "api_key": THINGSPEAK_API_KEY,
-        "field1": Bat Counts,        # Bat count
-        "field2": location,     # Location name
-        "field3": date,         # Date (YYYYMMDD or readable format)
 
-    }
-    try:
-        response = requests.post(THINGSPEAK_URL, params=payload)
-        print("Sent to ThingSpeak:", response.text)
-    except Exception as e:
-        print("ThingSpeak upload failed:", e)
+# def send_to_thingspeak(count, location="Unknown", date="Unknown"):
+#     payload = {
+#         "api_key": THINGSPEAK_API_KEY,
+#         "field1": count,        # Bat count
+#         "field2": location,     # Location name
+#         "field3": date,         # Date
+#     }
+#     print(f"Sending to ThingSpeak: {payload}")  # debug line
+#     try:
+#         response = requests.post(THINGSPEAK_URL, params=payload)
+#         print(f"ThingSpeak Response: {response.text}")
+#     except Exception as e:
+#         print(f"ThingSpeak upload failed: {e}")
 
-
-if __name__ == '__main__':
-    app.run(debug=True)

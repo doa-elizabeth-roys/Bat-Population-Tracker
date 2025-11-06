@@ -24,7 +24,6 @@ __all__ = (
     "Concat",
     "RepConv",
     "Index",
-    "BiFPN"
 )
 
 
@@ -713,70 +712,3 @@ class Index(nn.Module):
             (torch.Tensor): Selected tensor.
         """
         return x[self.index]
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-# --------------------------------------------------
-# BiFPN (Lightweight Version)
-# --------------------------------------------------
-
-class BiFPN(nn.Module):
-    """
-    Lightweight Bi-directional Feature Pyramid Network (BiFPN)
-    Adapted for YOLOv8-style integration.
-
-    Takes multiple feature maps (P2, P3, P4) and fuses them adaptively
-    using learnable attention weights.
-    """
-
-    def __init__(self, c: int, eps: float = 1e-4):
-        super().__init__()
-        self.eps = eps
-
-        # Channel adjustment layers
-        self.conv2 = nn.Conv2d(c, c, kernel_size=1)
-        self.conv3 = nn.Conv2d(c, c, kernel_size=1)
-        self.conv4 = nn.Conv2d(c, c, kernel_size=1)
-
-        # Depthwise separable convs for fusion outputs
-        self.dwconv2 = nn.Conv2d(c, c, 3, padding=1, groups=c)
-        self.dwconv3 = nn.Conv2d(c, c, 3, padding=1, groups=c)
-        self.dwconv4 = nn.Conv2d(c, c, 3, padding=1, groups=c)
-
-        # Learnable weights for top-down and bottom-up paths
-        self.w1 = nn.Parameter(torch.ones(3, 2))  # (2 weights for each of 3 scales)
-        self.w2 = nn.Parameter(torch.ones(3, 2))
-
-        self.relu = nn.ReLU(inplace=True)
-        self.act = nn.SiLU(inplace=True)
-
-    def forward(self, inputs):
-        """
-        inputs: list of feature maps [P2, P3, P4] (all same number of channels)
-        returns: fused feature maps [out2, out3, out4]
-        """
-        P2, P3, P4 = inputs
-
-        # Channel adjust
-        P2 = self.conv2(P2)
-        P3 = self.conv3(P3)
-        P4 = self.conv4(P4)
-
-        # Normalize weights
-        w1 = self.relu(self.w1)
-        w1 = w1 / (torch.sum(w1, dim=-1, keepdim=True) + self.eps)
-        w2 = self.relu(self.w2)
-        w2 = w2 / (torch.sum(w2, dim=-1, keepdim=True) + self.eps)
-
-        # -------- Top-Down Pathway --------
-        P4_td = P4
-        P3_td = self.dwconv3(self.act(w1[1,0]*P3 + w1[1,1]*F.interpolate(P4_td, scale_factor=2, mode="nearest")))
-        P2_td = self.dwconv2(self.act(w1[0,0]*P2 + w1[0,1]*F.interpolate(P3_td, scale_factor=2, mode="nearest")))
-
-        # -------- Bottom-Up Pathway --------
-        P3_out = self.dwconv3(self.act(w2[1,0]*P3_td + w2[1,1]*F.max_pool2d(P2_td, 2)))
-        P4_out = self.dwconv4(self.act(w2[2,0]*P4_td + w2[2,1]*F.max_pool2d(P3_out, 2)))
-
-        return [P2_td, P3_out, P4_out]
