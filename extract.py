@@ -28,6 +28,8 @@
 
 import re
 from datetime import datetime
+import csv
+import os
 
 def extract_metadata(filename):
     parts = filename.split("_")
@@ -59,3 +61,28 @@ def extract_metadata(filename):
 
     return location or "Unknown", date_str or "Unknown", month_str or "Unknown"
 
+
+
+def log_to_csv(filename, bat_count, location, date_obj):
+    # Define log file location
+    log_file = "detections_log.csv"
+    # Check if the file exists
+    file_exists = os.path.exists(log_file)
+    
+    # Prepare data row
+    row = {
+        "filename": filename,
+        "bat_count": bat_count,
+        "location": location,
+        "timestamp": date_obj.isoformat()  # UTC timestamp in ISO format
+    }
+
+    # Open file and write
+    with open(log_file, mode='a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=row.keys())
+        
+        # Write header only if file doesn't exist
+        if not file_exists:
+            writer.writeheader()
+        
+        writer.writerow(row)

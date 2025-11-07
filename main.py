@@ -1,7 +1,10 @@
 import sys
 import os
-from extract import extract_metadata
+from extract import extract_metadata, log_to_csv
 import requests
+from werkzeug.utils import secure_filename
+
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "bmp", "tiff"}
 
 sys.path.append("C:/Users/DALE MARY MATHEW/Downloads/ComputerVisionUpload")
 
@@ -24,8 +27,8 @@ model = YOLO("best.pt")
 
 
 @app.route('/')
-def main():
-    return render_template("index.html")
+# def main():
+#     return render_template("index.html")
 
 def home():
     # Local image in static/images/SFF.png
@@ -46,16 +49,40 @@ def home():
 #             file.save(file.filename)
 #         return "<h1>Files Uploaded Successfully.!</h1>"
 
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 @app.route("/upload", methods=["POST"])
 def upload_files():
+    message = None  # Initialize message at the start
     files = request.files.getlist("file")
     if not files:
-        return jsonify({"error": "No files uploaded!"}), 400
+        message = "No files uploaded!"
+        return render_template("index.html", message=message)
 
     results_list = []
     total_bats = 0
 
     for file in files:
+        filename = secure_filename(file.filename)
+
+        def allowed_file(filename):
+            return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+        
+        # Check if it's an allowed file (image)
+        if not allowed_file(filename):
+            results_list.append({
+                "filename": filename,
+                "bat_count": "N/A",
+                "location": "Unknown",
+                "date": "N/A",
+                "processed_image": None,
+                "error": f"Unsupported file type: {filename.split('.')[-1]}"
+            })
+            continue  # Skip the processing for this non-image file
+
+        # Process image files
         img_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(img_path)
 
@@ -74,7 +101,8 @@ def upload_files():
         total_bats += bat_count
         location, date_str, month = extract_metadata(file.filename)
 
-        # 5Convert date string to ThingSpeak timestamp
+
+        #Convert date string to ThingSpeak timestamp
         from datetime import datetime
         try:
             # assuming date is like "2024-06-18_23-45"
@@ -84,6 +112,7 @@ def upload_files():
             date_obj = datetime.utcnow()
 
         send_to_thingspeak(bat_count, location, date_obj)
+        log_to_csv(file.filename, bat_count, location, date_obj)
 
         # Build URL to show on web page
         processed_image_url = url_for("static", filename=f"results/{processed_filename}")
@@ -158,11 +187,6 @@ def send_to_thingspeak(count, location="Unknown", date_obj=None):
 
     # print(f"Sending to ThingSpeak: {payload}")  # Debug
 
-    # try:
-    #     response = requests.post(THINGSPEAK_URL, params=payload)
-    #     print(f"ThingSpeak Response: {response.text}")
-    # except Exception as e:
-        # print(f"ThingSpeak upload failed: {e}")
 
   
 # def send_to_thingspeak(count, location="Unknown", date="Unknown"):
