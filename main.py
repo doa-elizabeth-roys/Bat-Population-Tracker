@@ -3,6 +3,9 @@ import os
 from extract import extract_metadata, log_to_csv
 import requests
 from werkzeug.utils import secure_filename
+import cv2
+import numpy as np
+
 
 ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "bmp", "tiff"}
 
@@ -10,6 +13,30 @@ sys.path.append("C:/Users/DALE MARY MATHEW/Downloads/ComputerVisionUpload")
 
 from ultralytics.nn.modules.APConv import PConv
 from ultralytics import YOLO
+
+from google.cloud import storage
+from google.oauth2 import service_account
+
+
+# Load credentials from the JSON file in your project
+credentials = service_account.Credentials.from_service_account_file(
+    "bat-detection-project-9946198a7c2b.json"
+)
+
+# Create a storage client and bucket globally
+storage_client = storage.Client(credentials=credentials)
+bucket = storage_client.bucket("spectacaled-flying-fox-results")
+# Path to your service account key
+# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account.json"
+
+# bucket = storage.Client(credentials=credentials).bucket("spectacaled-flying-fox-results")
+
+# Initialize GCS client
+# gcs_client = storage.Client()
+
+# # Set your bucket name
+# GCS_BUCKET_NAME = "spectacaled-flying-fox-results"  
+
 
 from flask import *
 app = Flask(__name__)
@@ -83,17 +110,31 @@ def upload_files():
             continue  # Skip the processing for this non-image file
 
         # Process image files
-        img_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(img_path)
+        # img_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        # file.save(img_path)
 
-        results = model.predict(img_path, conf=0.25, save=False,
-                                project=RESULTS_FOLDER, name="processed")
+
+        # 'file' is from request.files
+        file_bytes = np.frombuffer(file.read(), np.uint8)  # read uploaded file into bytes
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_UNCHANGED)  # d
+
+        results = model.predict(img, conf=0.25, save=False)
+                                # project=RESULTS_FOLDER, name="processed")
         processed_img = results[0].plot()
         
-        import cv2
-        processed_filename = f"processed_{file.filename}"
-        processed_image_path = os.path.join(RESULTS_FOLDER, processed_filename)
-        cv2.imwrite(processed_image_path, processed_img)
+        # import cv2
+        # processed_filename = f"processed_{file.filename}"
+        # processed_image_path = os.path.join(RESULTS_FOLDER, processed_filename)
+        # cv2.imwrite(processed_image_path, processed_img)
+
+# --- Upload directly to GCS from memory ---
+        _, img_encoded = cv2.imencode('.jpg', processed_img)
+        img_bytes = img_encoded.tobytes()
+
+        blob = bucket.blob(f"results/processed_{filename}")  # GCS path
+        blob.upload_from_string(img_bytes, content_type='image/jpeg')
+        blob.make_public()
+        processed_image_url = blob.public_url
 
         # detections = results[0].to_json()
         
@@ -105,17 +146,42 @@ def upload_files():
         #Convert date string to ThingSpeak timestamp
         from datetime import datetime
         try:
-            # assuming date is like "2024-06-18_23-45"
-            date_obj = datetime.strptime(date_str, "%Y-%m-%d_%H-%M")
+            if len(date_str) == 8 and date_str.isdigit():
+                # Handle filenames like 20240918
+                date_obj = datetime.strptime(date_str, "%Y%m%d")
+            elif "_" in date_str:
+                # Handle filenames with timestamps like 2024-09-18_23-45
+                date_obj = datetime.strptime(date_str, "%Y-%m-%d_%H-%M")
+            elif any(month in date_str for month in [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ]):
+                # Handle names like January_20250113_...
+                parts = date_str.split("_")
+                for p in parts:
+                    if p.isdigit() and len(p) == 8:
+                        date_obj = datetime.strptime(p, "%Y%m%d")
+                        break
+                else:
+                    raise ValueError
+            else:
+                raise ValueError
         except ValueError:
-            # fallback if format varies
             date_obj = datetime.utcnow()
+        # try:
+        #     # assuming date is like "2024-06-18_23-45"
+        #     date_obj = datetime.strptime(date_str, "%Y-%m-%d_%H-%M")
+        # except ValueError:
+        #     # fallback if format varies
+        #     date_obj = datetime.utcnow()
 
         send_to_thingspeak(bat_count, location, date_obj)
-        log_to_csv(file.filename, bat_count, location, date_obj)
+        log_to_csv(filename, bat_count, location, date_obj,bucket)
 
+        # Use GCS public URL for web display
+        processed_image_url = blob.public_url
         # Build URL to show on web page
-        processed_image_url = url_for("static", filename=f"results/{processed_filename}")
+        # processed_image_url = url_for("static", filename=f"results/{processed_filename}")
 
         results_list.append({
             "filename": file.filename,
@@ -178,6 +244,7 @@ def send_to_thingspeak(count, location="Unknown", date_obj=None):
         "field2": location,    # Location
         "created_at": date_obj.strftime("%Y-%m-%dT%H:%M:%SZ")  # ISO UTC format  # Custom timestamp from filename
     }
+    print("Uploading to ThingSpeak:", payload)
 
     try:
         response = requests.post("https://api.thingspeak.com/update.json", json=payload)
@@ -209,29 +276,3 @@ def send_to_thingspeak(count, location="Unknown", date_obj=None):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-# @app.post("/upload/")
-# async def upload_image(file: UploadFile):
-#     filepath = f"uploads/{file.filename}"
-#     with open(filepath, "wb") as f:
-#         shutil.copyfileobj(file.file, f)
-#     results = run_inference(filepath)
-#     publish_result_http(results)
-#     return {"status": "ok", "bats": results["bat_count"]}
-
-
-# def send_to_thingspeak(count, location="Unknown", date="Unknown"):
-#     payload = {
-#         "api_key": THINGSPEAK_API_KEY,
-#         "field1": count,        # Bat count
-#         "field2": location,     # Location name
-#         "field3": date,         # Date
-#     }
-#     print(f"Sending to ThingSpeak: {payload}")  # debug line
-#     try:
-#         response = requests.post(THINGSPEAK_URL, params=payload)
-#         print(f"ThingSpeak Response: {response.text}")
-#     except Exception as e:
-#         print(f"ThingSpeak upload failed: {e}")
-

@@ -28,21 +28,7 @@
 
         {% if message %}
             <h3 style="text-align:center; color:black; font-weight: bold;">{{ message }}</h3>
-        {% endif %}
-
-        <!-- {% if results %}
-        <div class="results-section">
-          <h3>Processed Images:</h3>
-          <!-- <div class="image-gallery"> -->
-            <!-- {% for r in results %}
-              <div class="image-item">
-                <img src="{{ r.processed_image }}" alt="{{ r.filename }}"> -->
-                <!-- <p>{{ r.filename }} → {{ r.bat_count }} bats</p> -->
-              <!-- </div>
-            {% endfor %}
-          <!-- </div> -->
-        <!-- </div>
-        {% endif %} --> 
+        {% endif %} 
 
         {% if results and results|length > 0 and results[0].processed_image %}
             <h3 style="text-align: left;">Processed Results:</h3>
@@ -196,7 +182,7 @@
         background-repeat: no-repeat;
         margin: 20px auto;           /* centers the image */
         width: 95%;                  /* 90% of the screen width */
-        height: 95vh;                /* 80% of the viewport height */
+        height: 100vh;                /* 80% of the viewport height */
         object-fit: cover;           /* scales the image nicely */
         border-radius: 10px;         /* optional rounded corners */
 
@@ -330,35 +316,3 @@
     "> -->
 </body>
 </html>
-
-<!-- $.getJSON(url, function(data) {
-    // var countsByMonth = {};
-    var countsByDay = {};
-    $.each(data.feeds, function(index, feed) {
-        if (feed.field1) {
-            var date = new Date(feed.created_at);
-            // YYYY-MM-DD format
-            var dayKey = date.getFullYear() + "-" 
-                    + ("0" + (date.getMonth() + 1)).slice(-2) + "-" 
-                    + ("0" + date.getDate()).slice(-2);
-
-            if (!countsByDay[dayKey]) countsByDay[dayKey] = 0;
-            countsByDay[dayKey] += parseInt(feed.field1);
-        }
-    });
-
-    // $.each(data.feeds, function(index, feed) {
-    //     if (feed.field1) {
-    //         var date = new Date(feed.created_at);
-    //         var monthYear = date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2); // YYYY-MM
-
-    //         if (!countsByMonth[monthYear]) countsByMonth[monthYear] = 0;
-    //         countsByMonth[monthYear] += parseInt(feed.field1); // aggregate counts
-    //     }
-    // });
-
-    // Prepare data for chart
-    var labels = Object.keys(countsByDay).sort(); // sorted months
-    var values = labels.map(function(label) {
-        return countsByDay[label];
-    }); -->

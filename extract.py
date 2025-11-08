@@ -62,27 +62,48 @@ def extract_metadata(filename):
     return location or "Unknown", date_str or "Unknown", month_str or "Unknown"
 
 
+from google.cloud import storage
 
-def log_to_csv(filename, bat_count, location, date_obj):
-    # Define log file location
-    log_file = "detections_log.csv"
-    # Check if the file exists
-    file_exists = os.path.exists(log_file)
-    
-    # Prepare data row
+def log_to_csv(filename, bat_count, location, date_obj, bucket):
+    import csv
+    import io
+    from google.api_core.exceptions import NotFound
+
+    gcs_path = "logs/detections_log.csv"
+    blob = bucket.blob(gcs_path)
+
+    # Try to download existing CSV if it exists
+    try:
+        existing_data = blob.download_as_text()
+        file_exists = True
+    except NotFound:
+        existing_data = ""
+        file_exists = False
+
+    # Create an in-memory string buffer
+    output = io.StringIO()
+
+    # If file exists, copy the old data first
+    if file_exists:
+        output.write(existing_data)
+
+    # Prepare row
     row = {
         "filename": filename,
         "bat_count": bat_count,
         "location": location,
-        "timestamp": date_obj.isoformat()  # UTC timestamp in ISO format
+        "timestamp": date_obj.isoformat()
     }
 
-    # Open file and write
-    with open(log_file, mode='a', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=row.keys())
-        
-        # Write header only if file doesn't exist
-        if not file_exists:
-            writer.writeheader()
-        
-        writer.writerow(row)
+    # Move cursor to end and write new data
+    writer = csv.DictWriter(output, fieldnames=row.keys())
+
+    # Write header only once if the file was empty
+    if not file_exists:
+        writer.writeheader()
+
+    writer.writerow(row)
+
+    # Upload updated CSV to GCS
+    blob.upload_from_string(output.getvalue(), content_type="text/csv")
+    output.close()
