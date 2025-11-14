@@ -80,20 +80,33 @@ def log_to_csv(filename, bat_count, location, date_obj, bucket):
         existing_data = ""
         file_exists = False
 
-    # Create an in-memory string buffer
-    output = io.StringIO()
+     # Load existing filenames to skip duplicates
+    existing_filenames = set()
+    if file_exists and existing_data.strip():
+        reader = csv.DictReader(io.StringIO(existing_data))
+        for r in reader:
+            existing_filenames.add(r["filename"])
 
-    # If file exists, copy the old data first
-    if file_exists:
-        output.write(existing_data)
+    # Skip if this file is already logged
+    if filename in existing_filenames:
+        print(f"{filename} already exists. Skipping...")
+        return
 
-    # Prepare row
+      # Prepare row
     row = {
         "filename": filename,
         "bat_count": bat_count,
         "location": location,
         "timestamp": date_obj.isoformat()
     }
+
+    # Create an in-memory string buffer
+    output = io.StringIO()
+
+    # If file exists, copy the old data first
+    if file_exists:
+        output.write(existing_data)
+        output.seek(0, io.SEEK_END)
 
     # Move cursor to end and write new data
     writer = csv.DictWriter(output, fieldnames=row.keys())

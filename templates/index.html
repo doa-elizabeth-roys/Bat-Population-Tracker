@@ -59,8 +59,8 @@
         
         
             <div id="thingspeakPlot" style="display: none;text-align:center; margin-top:20px;">
-                <iframe width="450" height="260" style="border: 1px solid #cccccc;" src="https://thingspeak.com/channels/3142218/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=60&type=line&update=15"></iframe>
-
+                <!-- <iframe width="500" height="300" style="border: 1px solid #000000; font-weight: bold;" src="https://thingspeak.com/channels/3142218/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=200&title=Bat+Population+Over+Time&type=spline&xaxis=Date&yaxis=Bat+Counts"></iframe> -->
+                <iframe width="500" height="300" style="border: 1px solid #cccccc;" src="https://thingspeak.com/channels/3142218/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=200&title=Bat+Population+Over+Time&type=spline&xaxis=Date&yaxis=Bat+Counts"></iframe>
             </div>
         </div>
             <!-- <div class="container">
@@ -78,71 +78,6 @@
                 x.style.display = "none";
               }
             }
-
-            // $(document).ready(function() {
-            // function getData() {
-            //     var url ="https://api.thingspeak.com/channels/3142218/fields/1,2.json?api_key=6BHMOKSNA41YBCDY&results=10";
-                 
-
-            //     $.getJSON(url, function(data) {
-            //         var countsByDay = {};
-
-            //         // Collect bat counts per day
-            //         $.each(data.feeds, function(index, feed) {
-            //             if (feed.field1) {
-            //                 var date = new Date(feed.created_at);
-            //                 var dayKey = date.getFullYear() + "-" 
-            //                             + ("0" + (date.getMonth() + 1)).slice(-2) + "-" 
-            //                             + ("0" + date.getDate()).slice(-2);
-            //                 if (!countsByDay[dayKey]) countsByDay[dayKey] = 0;
-            //                 countsByDay[dayKey] += parseInt(feed.field1);
-            //             }
-            //         });
-
-            //         // Generate full timeline from first upload to today
-            //         var allDates = [];
-            //         var startDate = new Date(Object.keys(countsByDay)[0]); // first upload
-            //         var endDate = new Date(); // today
-            //         for (var d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-            //             var key = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
-            //             allDates.push(key);
-            //             if (!countsByDay[key]) countsByDay[key] = 0; // fill missing days with 0
-            //         }
-
-            //         // Prepare chart data
-            //         var labels = allDates;
-            //         var values = allDates.map(function(day) { return countsByDay[day]; });
-
-            //         // Create line chart
-            //         var ctx = document.getElementById('batChart').getContext('2d');
-            //         new Chart(ctx, {
-            //             type: 'line',
-            //             data: {
-            //                 labels: labels,
-            //                 datasets: [{
-            //                     label: 'Bat Count',
-            //                     data: values,
-            //                     borderColor: '#006400',
-            //                     backgroundColor: '#84bd00',
-            //                     fill: false,
-            //                     lineTension: 0
-            //                 }]
-            //             },
-            //             options: {
-            //                 scales: {
-            //                     yAxes: [{
-            //                         ticks: { beginAtZero: true }
-            //                     }],
-            //                     xAxes: [{
-            //                         ticks: { autoSkip: false }
-            //                     }]
-            //                 }
-            //             }
-            //         });
-            //     });
-            // }
-
-            // getData();
 
             let currentSlide = 0;
             showSlide(currentSlide);
@@ -179,7 +114,7 @@
         border: 2px solid black;
         padding: 25px;
         background-size: cover;
-        background-repeat: no-repeat;
+        background-repeat: repeat;
         margin: 20px auto;           /* centers the image */
         width: 95%;                  /* 90% of the screen width */
         height: 100vh;                /* 80% of the viewport height */
@@ -188,7 +123,7 @@
 
         background-attachment: fixed;
         background-position: center;
-
+        overflow: auto;
 
     }
 
