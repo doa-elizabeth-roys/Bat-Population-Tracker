@@ -27,7 +27,7 @@ To run this project locally, you'll need:
 
    ```bash
    git clone https://github.com/doa-elizabeth-roys/Bat-Population-Tracker.git
-   cd bat-detection-project
+   cd Bat-Population-Tracker
 
 2. Install the dependencies:
 
