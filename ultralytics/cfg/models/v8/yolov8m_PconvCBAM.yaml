@@ -1,0 +1,174 @@
+# ---------------------------
+# YOLOv8 Enhanced Model YAML
+# ---------------------------
+
+# YOLOv8m with PConv backbone and C2f+CBAM blocks
+
+# Parameters
+nc: 1         # number of classes
+ch: 1         # input channels 
+
+scales:       # model compound scaling constants
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
+
+# -------------------------------------------------------
+# BACKBONE
+# -------------------------------------------------------
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, PConv, [64, 4, 2]]          # 0-P1/2
+  - [-1, 1, PConv, [128, 3, 2]]         # 1-P2/4
+  - [-1, 3, C2f, [128, 128, 3, True, 1, 0.5, True]]   # 2: C2f with CBAM
+  - [-1, 1, Conv, [256, 3, 2]]          # 3-P3/8
+  - [-1, 6, C2f, [256, 256, 6, True, 1, 0.5, True]]   # 4
+  - [-1, 1, Conv, [512, 3, 2]]          # 5-P4/16
+  - [-1, 6, C2f, [512, 512, 6, True, 1, 0.5, True]]   # 6
+  - [-1, 1, Conv, [1024, 3, 2]]         # 7-P5/32
+  - [-1, 3, C2f, [1024, 1024, 3, True, 1, 0.5, True]] # 8
+  - [-1, 1, SPPF, [1024, 5]]            # 9
+
+# -------------------------------------------------------
+# HEAD
+# -------------------------------------------------------
+head:
+  # Upsample + Concat + C2f with CBAM
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 10
+  - [[-1, 6], 1, Concat, [1]]                    # 11 -> 1024 + 512 = 1536
+  - [-1, 3, C2f, [1536, 512, 3, True, 1, 0.5, True]]  # 12
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 13
+  - [[-1, 4], 1, Concat, [1]]                    # 14 -> 512 + 256 = 768
+  - [-1, 3, C2f, [768, 256, 3, True, 1, 0.5, True]]   # 15 (P3/8-small)
+
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]  # 16
+  - [[-1, 2], 1, Concat, [1]]                    # 17 -> 256 + 128 = 384
+  - [-1, 3, C2f, [384, 128, 3, True, 1, 0.5, True]]   # 18 (P2/4-xsmall)
+
+  - [-1, 1, Conv, [128, 3, 2]]                   # 19
+  - [[-1, 15], 1, Concat, [1]]                   # 20 -> 128 + 256 = 384
+  - [-1, 3, C2f, [384, 256, 3, True, 1, 0.5, True]]   # 21 (P3/8-small)
+
+  - [-1, 1, Conv, [256, 3, 2]]                   # 22
+  - [[-1, 12], 1, Concat, [1]]                   # 23 -> 256 + 512 = 768
+  - [-1, 3, C2f, [768, 512, 3, True, 1, 0.5, True]]   # 24 (P4/16-medium)
+
+  - [-1, 1, Conv, [512, 3, 2]]                   # 25
+  - [[-1, 9], 1, Concat, [1]]                    # 26 -> 512 + 1024 = 1536
+  - [-1, 3, C2f, [1536, 1024, 3, True, 1, 0.5, True]] # 27 (P5/32-large)
+
+  - [[18, 21, 24, 27], 1, Detect, [nc]]          # Detect(P2, P3, P4, P5)
+
+
+
+
+# # YOLOv8 Object Detection - Optimized for Small Thermal IR Objects
+# backbone:
+#   # [from, repeats, module, args]
+#   - [-1, 1, PConv, [64, 4, 2]]      # 0-P1/2
+#   - [-1, 1, PConv, [128, 3, 2]]     # 1-P2/4
+#   - [-1, 3, C2f, [128, True]]       # 2
+#   - [-1, 1, Conv, [256, 3, 2]]      # 3-P3/8
+#   - [-1, 6, C2f, [256, True]]       # 4
+#   - [-1, 1, Conv, [512, 3, 2]]      # 5-P4/16
+#   - [-1, 6, C2f, [512, True]]       # 6
+#   - [-1, 1, Conv, [1024, 3, 2]]     # 7-P5/32
+#   - [-1, 3, C2f, [1024, True]]      # 8
+#   - [-1, 1, SPPF, [1024, 5]]        # 9
+
+# head:
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#   - [[-1, 6], 1, Concat, [1]]       # 10: P5 upsample + P4
+#   - [-1, 3, C2f, [512]]             # 11
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#   - [[-1, 4], 1, Concat, [1]]       # 12: P4 upsample + P3
+#   - [-1, 3, C2f, [256]]             # 13
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#   - [[-1, 2], 1, Concat, [1]]       # 14: P3 upsample + P2
+#   - [-1, 3, C2f, [128]]             # 15: P2/4 small objects
+
+#   # Downsampling path
+#   - [-1, 1, Conv, [128, 3, 2]]      # 16
+#   - [[-1, 15], 1, Concat, [1]]      # 17
+#   - [-1, 3, C2f, [256]]             # 18: P3/8
+
+#   - [-1, 1, Conv, [256, 3, 2]]      # 19
+#   - [[-1, 13], 1, Concat, [1]]      # 20
+#   - [-1, 3, C2f, [512]]             # 21: P4/16
+
+#   - [-1, 1, Conv, [512, 3, 2]]      # 22
+#   - [[-1, 11], 1, Concat, [1]]      # 23
+#   - [-1, 3, C2f, [1024]]            # 24: P5/32
+
+#   - [[15, 18, 21, 24], 1, Detect, [nc]]  # 25: Detect P2,P3,P4,P5
+
+
+# # Anchors tuned for small thermal objects
+# anchors:
+#   - [4, 8, 8, 16, 16, 32]  # P2 small
+#   - [32, 64, 64, 128]       # P3 medium
+#   - [128, 256, 256, 512]    # P4 large
+
+
+# # YOLOv8 + Pinwheel Convolution + C3Ghost Hybrid
+# # Novel structure combining spatially-aware PConv and Ghost bottlenecks
+
+# nc: 1  # number of classes
+# ch: 1  # input channels (thermal images)
+# scales:
+#   n: [0.33, 0.25, 1024]
+#   s: [0.33, 0.50, 1024]
+#   m: [0.67, 0.75, 768]
+#   l: [1.00, 1.00, 512]
+#   x: [1.00, 1.25, 512]
+
+# # ------------------------------
+# # Backbone
+# # ------------------------------
+# backbone:
+#   # [from, repeats, module, args]
+#   - [-1, 1, PConv, [64, 4, 2]]        # 0 - P1/2  (Pinwheel)
+#   - [-1, 1, PConv, [128, 3, 2]]       # 1 - P2/4  (Pinwheel)
+#   - [-1, 3, C3Ghost, [128, True]]     # 2 - lightweight feature aggregation
+#   - [-1, 1, Conv, [256, 3, 2]]        # 3 - P3/8
+#   - [-1, 6, C3Ghost, [256, True]]     # 4
+#   - [-1, 1, Conv, [512, 3, 2]]        # 5 - P4/16
+#   - [-1, 6, C3Ghost, [512, True]]     # 6
+#   - [-1, 1, Conv, [1024, 3, 2]]       # 7 - P5/32
+#   - [-1, 3, C3Ghost, [1024, True]]    # 8
+#   - [-1, 1, SPPF, [1024, 5]]          # 9
+
+# # ------------------------------
+# # Head
+# # ------------------------------
+# head:
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#   - [[-1, 6], 1, Concat, [1]]         # cat backbone P4
+#   - [-1, 3, C3Ghost, [512]]           # 12
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#   - [[-1, 4], 1, Concat, [1]]         # cat backbone P3
+#   - [-1, 3, C3Ghost, [256]]           # 15 (P3/8-small)
+
+#   - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#   - [[-1, 2], 1, Concat, [1]]         # cat backbone P2
+#   - [-1, 3, C3Ghost, [128]]           # 18 (P2/4-xsmall)
+
+#   - [-1, 1, Conv, [128, 3, 2]]
+#   - [[-1, 15], 1, Concat, [1]]        # cat head P3
+#   - [-1, 3, C3Ghost, [256]]           # 21 (P3/8-small)
+
+#   - [-1, 1, Conv, [256, 3, 2]]
+#   - [[-1, 12], 1, Concat, [1]]        # cat head P4
+#   - [-1, 3, C3Ghost, [512]]           # 24 (P4/16-medium)
+
+#   - [-1, 1, Conv, [512, 3, 2]]
+#   - [[-1, 9], 1, Concat, [1]]         # cat head P5
+#   - [-1, 3, C3Ghost, [1024]]          # 27 (P5/32-large)
+
+#   - [[18, 21, 24, 27], 1, Detect, [nc]]  # Detect(P2, P3, P4, P5)

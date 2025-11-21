@@ -931,6 +931,10 @@ class Metric(SimpleClass):
             (float): The mean recall of all classes.
         """
         return self.r.mean() if len(self.r) else 0.0
+        
+    @property
+    def map30(self) -> float:
+        return self.all_ap[:, 6].mean()  # if IoU=0.3 is first in list
 
     @property
     def map50(self) -> float:
@@ -940,7 +944,7 @@ class Metric(SimpleClass):
         Returns:
             (float): The mAP at an IoU threshold of 0.5.
         """
-        return self.all_ap[:, 0].mean() if len(self.all_ap) else 0.0
+        return self.all_ap[:, 10].mean() if len(self.all_ap) else 0.0
 
     @property
     def map75(self) -> float:
@@ -950,7 +954,7 @@ class Metric(SimpleClass):
         Returns:
             (float): The mAP at an IoU threshold of 0.75.
         """
-        return self.all_ap[:, 5].mean() if len(self.all_ap) else 0.0
+        return self.all_ap[:, 15].mean() if len(self.all_ap) else 0.0
 
     @property
     def map(self) -> float:
@@ -964,7 +968,7 @@ class Metric(SimpleClass):
 
     def mean_results(self) -> list[float]:
         """Return mean of results, mp, mr, map50, map."""
-        return [self.mp, self.mr, self.map50, self.map]
+        return [self.mp, self.mr ,self.map50, self.map]
 
     def class_result(self, i: int) -> tuple[float, float, float, float]:
         """Return class-aware result, p[i], r[i], ap50[i], ap[i]."""

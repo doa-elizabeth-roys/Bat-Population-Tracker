@@ -75,6 +75,7 @@ from .conv import (
     LightConv,
     RepConv,
     SpatialAttention,
+    BiFPN,
 )
 from .head import (
     OBB,
@@ -88,6 +89,7 @@ from .head import (
     YOLOEDetect,
     YOLOESegment,
     v10Detect,
+    # DyDetect,
 )
 from .transformer import (
     AIFI,
@@ -107,6 +109,10 @@ from .APConv import (
     APC2f, 
     APBottleneck,
 )
+
+# from .dyhead import(
+#     swish,h_swish,h_sigmoid,DyDCNv2,DyHeadBlock,DyReLU,
+# )
 
 __all__ = (
     "Conv",
@@ -146,11 +152,13 @@ __all__ = (
     "GhostBottleneck",
     "Bottleneck",
     "BottleneckCSP",
+    "BiFPN",
     "Proto",
     "Detect",
     "Segment",
     "Pose",
     "Classify",
+    # "DyDetect",
     "TransformerEncoderLayer",
     "RepC3",
     "RTDETRDecoder",
@@ -185,4 +193,7 @@ __all__ = (
     "TorchVision",
     "Index",
     "A2C2f",
+    "PConv"
+    # "ImplicitA",
+    # "ImplicitM"
 )

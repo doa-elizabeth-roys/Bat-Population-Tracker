@@ -34,6 +34,7 @@ from ultralytics.nn.modules import (
     C2fCIB,
     C2fPSA,
     C3Ghost,
+    CBAM,
     C3k2,
     C3x,
     CBFuse,
@@ -43,6 +44,7 @@ from ultralytics.nn.modules import (
     Conv,
     Conv2,
     ConvTranspose,
+    BiFPN,
     Detect,
     DWConv,
     DWConvTranspose2d,
@@ -71,7 +73,15 @@ from ultralytics.nn.modules import (
     APC2f, 
     APBottleneck, 
     PConv, 
-
+    # DyDetect,
+    # swish,
+    # h_swish,
+    # h_sigmoid,
+    # DyDCNv2,
+    # DyHeadBlock,
+    # DyReLU,
+    # ImplicitA,
+    # ImplicitM
 )
 from ultralytics.nn.modules.APConv import PConv
 from ultralytics.utils import DEFAULT_CFG_DICT, LOGGER, YAML, colorstr, emojis
@@ -83,12 +93,18 @@ from ultralytics.utils.loss import (
     v8OBBLoss,
     v8PoseLoss,
     v8SegmentationLoss,
+    AdaptiveThresholdFocalLoss,
 )
+
+# from ultralytics.nn.modules.head import DyDetect
+# from ultralytics.nn.modules.dyhead import (
+#     swish,h_swish,h_sigmoid,DyDCNv2,DyHeadBlock,DyReLU, ImplicitM,ImplicitA
+# )
+
 # from ultralytics.utils.SDloss import (
 #     BboxLoss,
 #     SLSIoULoss,
-#     AverageMeter,
-   
+#     AverageMeter
 # )
 from ultralytics.utils.ops import make_divisible
 from ultralytics.utils.patches import torch_load
@@ -509,6 +525,11 @@ class DetectionModel(BaseModel):
     def init_criterion(self):
         """Initialize the loss criterion for the DetectionModel."""
         return E2EDetectLoss(self) if getattr(self, "end2end", False) else v8DetectionLoss(self)
+
+    # def init_criterion(self):
+    #     reg_max = 16  
+    #     use_dfl = True
+    #     return BboxLoss(reg_max=reg_max, use_dfl=use_dfl)
 
 
 class OBBModel(DetectionModel):
@@ -1446,6 +1467,7 @@ def torch_safe_load(weight, safe_only=False):
                 "ultralytics.nn.modules.block.Silence": "torch.nn.Identity",  # YOLOv9e
                 "ultralytics.nn.tasks.YOLOv10DetectionModel": "ultralytics.nn.tasks.DetectionModel",  # YOLOv10
                 "ultralytics.utils.loss.v10DetectLoss": "ultralytics.utils.loss.E2EDetectLoss",  # YOLOv10
+                # "ultralytics.utils.SDLoss": "ultralytics.utils.SDLoss.Bboxloss",
             },
         ):
             if safe_only:
@@ -1607,7 +1629,17 @@ def parse_model(d, ch, verbose=True):
             A2C2f,
             PConv, 
             APC2f, 
-            APBottleneck
+            APBottleneck,
+            BiFPN,
+            # DyDetect,
+            # swish,
+            # h_swish,
+            # h_sigmoid,
+            # DyDCNv2,
+            # DyHeadBlock,
+            # DyReLU,
+            # ImplicitA,
+            # ImplicitM
         }
     )
     repeat_modules = frozenset(  # modules with 'repeat' arguments
@@ -1627,7 +1659,6 @@ def parse_model(d, ch, verbose=True):
             C2fCIB,
             C2PSA,
             A2C2f,
-            
         }
     )
     for i, (f, n, m, args) in enumerate(d["backbone"] + d["head"]):  # from, number, module, args
@@ -1637,21 +1668,7 @@ def parse_model(d, ch, verbose=True):
             else getattr(__import__("torchvision").ops, m[16:])
             if "torchvision.ops." in m
             else globals()[m]
-        )  # get module
-        # try:
-        #     m = (
-        #         getattr(torch.nn, m[3:])
-        #         if "nn." in m
-        #         else getattr(__import__("torchvision").ops, m[16:])
-        #         if "torchvision.ops." in m
-        #         else globals()[m]
-        #     )
-        # except KeyError:
-        #     
-        #     from APConv import PConv  
-        #     custom_modules = {"PConv": PConv}
-        #     m = custom_modules[m]
-
+        ) 
         for j, a in enumerate(args):
             if isinstance(a, str):
                 with contextlib.suppress(ValueError):
@@ -1728,7 +1745,6 @@ def parse_model(d, ch, verbose=True):
             ch = []
         ch.append(c2)
     return torch.nn.Sequential(*layers), sorted(save)
-
 
 def yaml_model_load(path):
     """

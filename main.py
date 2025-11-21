@@ -7,9 +7,7 @@ import cv2
 import numpy as np
 
 
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "bmp", "tiff"}
-
-# sys.path.append("C:/Users/DALE MARY MATHEW/Downloads/ComputerVisionUpload")
+ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png"}
 
 from ultralytics.nn.modules.APConv import PConv
 from ultralytics import YOLO
@@ -25,27 +23,15 @@ credentials = service_account.Credentials.from_service_account_file(
 
 # Create a storage client and bucket globally
 storage_client = storage.Client(credentials=credentials)
-bucket = storage_client.bucket("spectacaled-flying-fox-results")
-
-
-# Path to your service account key
-# os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account.json"
-
-# bucket = storage.Client(credentials=credentials).bucket("spectacaled-flying-fox-results")
-
-# Initialize GCS client
-# gcs_client = storage.Client()
-
-# # Set your bucket name
-# GCS_BUCKET_NAME = "spectacaled-flying-fox-results"  
+bucket = storage_client.bucket("spectacaled-flying-fox-results") 
 
 
 from flask import *
 app = Flask(__name__)
 
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # allow larger upload sizes
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  
 app.config['MAX_FILE_LENGTH'] = 5 * 1024 * 1024
-app.config['MAX_FILES'] = 50
+app.config['MAX_FILES'] = 60
 
 THINGSPEAK_API_KEY = "H0JZNIRA6SMHJNO8"
 THINGSPEAK_URL = "https://api.thingspeak.com/update"
@@ -60,27 +46,11 @@ model = YOLO("best.pt")
 
 
 @app.route('/')
-# def main():
-#     return render_template("index.html")
 
 def home():
-    # Local image in static/images/SFF.png
-    # image_url = url_for('static', filename='images/SFF.png') http://127.0.0.1:5000/static/images/SFF.png
     image_url = '../static/images/flyingbat.png'
     return render_template('index.html', image_url=image_url)
     
-
-# @app.route('/upload', methods=['POST'])
-# def upload():
-#     if request.method == 'POST':
-
-#         # Get the list of files from webpage
-#         files = request.files.getlist("file")
-
-#         # Iterate for each file in the files List, and Save them
-#         for file in files:
-#             file.save(file.filename)
-#         return "<h1>Files Uploaded Successfully.!</h1>"
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -97,7 +67,7 @@ def upload_files():
     results_list = []
     total_bats = 0
 
-    # ======  Load or create CSV from GCS ======
+    # Load or create CSV from GCS 
     gcs_path = "logs/detections_log.csv"
     blob = bucket.blob(gcs_path)
 
@@ -108,7 +78,7 @@ def upload_files():
         existing_data = ""
         file_exists = False
 
-    # Track already-logged filenames to skip duplicates
+    # Track filenames to skip duplicates
     existing_filenames = set()
     if file_exists and existing_data.strip():
         import io, csv
@@ -127,7 +97,7 @@ def upload_files():
     if not file_exists:
         writer.writeheader()
 
-    # ======  Process files ======
+    # Process files 
     for file in files:
         filename = secure_filename(file.filename)
 
@@ -144,7 +114,7 @@ def upload_files():
 
         # Skip duplicates
         if filename in existing_filenames:
-            print(f"{filename} already exists — skipping detection + ThingSpeak")
+            print(f"{filename} already exists.Skipping detection + ThingSpeak")
             continue
 
         # Decode uploaded image
@@ -162,7 +132,7 @@ def upload_files():
         blob_img.make_public()
         processed_image_url = blob_img.public_url
 
-        # Extract metadata (you already have extract_metadata)
+        # Extract metadata
         location, date_str, month = extract_metadata(filename)
         from datetime import datetime
         try:
@@ -199,17 +169,17 @@ def upload_files():
             "processed_image": processed_image_url
         })
 
-    # ====== Upload final CSV to GCS once ======
+    # Upload final CSV to GCS once 
     blob.upload_from_string(output.getvalue(), content_type="text/csv")
     output.close()
 
-    # ====== Web response ======
+    # Web response 
     if len(results_list) == 0:
-        message = "All uploaded files already exist in the database — nothing new processed."
+        message = "All uploaded files already exist in the database. Nothing new processed."
     elif len(results_list) == 1:
         message = f"Detected {total_bats} bats at {results_list[0]['location']}"
     else:
-        message = f"Processed {len(results_list)} new images — total {total_bats} bats detected!"
+        message = f"Processed {len(results_list)} new images. Total {total_bats} bats detected!"
 
     return render_template("index.html", message=message, results=results_list)
 
@@ -233,27 +203,10 @@ def send_to_thingspeak(count, location="Unknown", date_obj=None):
     except Exception as e:
         print("ThingSpeak upload failed:", e)
 
-    # print(f"Sending to ThingSpeak: {payload}")  # Debug
-
-
-  
-# def send_to_thingspeak(count, location="Unknown", date="Unknown"):
-#     payload = {
-#         "api_key": THINGSPEAK_API_KEY,
-#         "field1": count,        # Bat count
-#         "field2": location,     # Location name
-#         "field3": date,         # Date
-#     }
-#     print(f"Sending to ThingSpeak: {payload}")  # debug line
-#     try:
-#         response = requests.post(THINGSPEAK_URL, params=payload)
-#         # if response.status_code == 200:
-#         print(f"ThingSpeak Response:", response.text)
-#         # else:
-#         #     print(f"ThingSpeak failed with status: {response.status_code}")
-#     except Exception as e:
-#         print(f"ThingSpeak upload failed: {e}")
-
-
 if __name__ == '__main__':
     app.run(debug=True)
+
+# if __name__ == "__main__":
+#     import os
+#     port = int(os.environ.get("PORT", 8080))
+#     app.run(host="0.0.0.0", port=port)
