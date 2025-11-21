@@ -58,7 +58,26 @@ To run this project locally, you'll need:
 
 6. Run the application:
 
-    ```python main.py```
+    ```python main.py``` or
+    ```py main.py```
 
 
 7. Access the web interface at http://localhost:5000/
+
+### File Structure
+main.py - main file that connects all parts of the system together.
+index.py - front-end part of the application
+extract.py - script is used for extracting relevant metadata from the uploaded image files.
+
+### **Troubleshooting and Common Errors**
+
+1. **Error: Model Not Loading**
+   - If you’re using a custom model, replace the `best.pt` file with your trained model and ensure the model format is correct.
+
+2. **Google Cloud Storage Authentication Issue**
+   - Verify that the **Google Cloud Storage credentials** are correctly set up.
+   - Make sure the environment variable `GOOGLE_APPLICATION_CREDENTIALS` points to your service account JSON key file.
+   - Check if the GCS bucket has been created and the permissions are correctly configured.
+   
+3. **Thingspeak Plot Not Showing**
+   - Verify the API key and channel ID.
