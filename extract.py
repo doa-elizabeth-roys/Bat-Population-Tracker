@@ -13,11 +13,11 @@ def extract_metadata(filename):
             date_str = p
             try:
                 dt = datetime.strptime(date_str, "%Y%m%d")
-                month_str = dt.strftime("%B")  # Convert numeric date to month name
+                month_str = dt.strftime("%B")  
             except ValueError:
                 pass
 
-    # Detect a month name (January, February, etc.)
+    # Detect a month name
     for p in parts:
         if p.lower() in ["january", "february", "march", "april", "may", "june",
                          "july", "august", "september", "october", "november", "december"]:
@@ -44,7 +44,6 @@ def log_to_csv(filename, bat_count, location, date_obj, bucket):
     gcs_path = "logs/detections_log.csv"
     blob = bucket.blob(gcs_path)
 
-    # Try to download existing CSV if it exists
     try:
         existing_data = blob.download_as_text()
         file_exists = True

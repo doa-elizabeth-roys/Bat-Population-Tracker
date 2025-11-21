@@ -1,6 +1,6 @@
 # Automated Bat Detection and Counting Using Thermal Images
 
-This project focuses on **computer vision** for **automated detection and counting of bats** using thermal images. The system leverages **deep learning** models to detect bats in thermal images and displays predicted bounding boxes along with the bat count. Additionally, the web interface provides an embedded `thingSpeak` plot to visualize population trends over time. The bat count data, image metadata (including filenames and locations), and other relevant details are sent to **Google Cloud Services** for further analysis and storage.
+This project focuses on **computer vision** for **automated detection and counting of bats** using thermal images. The system uses **deep learning** models to detect bats in thermal images and displays predicted bounding boxes along with the bat count. Additionally, the web interface provides an embedded `thingSpeak` plot to visualize population trends over time. The bat count data, image metadata (including filenames and locations), and other relevant details are sent to **Google Cloud Services** for future analysis and storage.
 
 ## Features
 

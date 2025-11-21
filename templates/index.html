@@ -20,7 +20,6 @@
 <body>
     <div id = "page_look">
         <h1>Upload Images for Bat Detection and Counting</h1>
-        <!-- <img src="{{image_url}}" height="200px" width="300px" alt="Image of SFF"> -->
         <form action="/upload" method="POST" enctype="multipart/form-data">
             <input type="file" name="file" multiple />
             <input type="submit" value="Upload and Detect">
@@ -63,11 +62,6 @@
                 <iframe width="500" height="300" style="border: 1px solid #cccccc;" src="https://thingspeak.com/channels/3142218/charts/1?bgcolor=%23ffffff&color=%23d62020&dynamic=true&results=200&title=Bat+Population+Over+Time&type=spline&xaxis=Date&yaxis=Bat+Counts"></iframe>
             </div>
         </div>
-            <!-- <div class="container">
-                <canvas id="batChart">
-        
-                </canvas> -->
-        <!-- </div>   -->
 
         <script>
             function myFunction() {
